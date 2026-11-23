@@ -9,6 +9,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1e3a8a">
     <title>Tunisopoly — Viaggio in Tunisia (Ousama &amp; Ones)</title>
+    <!-- Libreria MQTT per sincronizzazione Online istantanea tra 2-4 telefoni su GitHub Pages -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <!-- Font calligrafici orientali (non bloccanti con display=swap e fallback immediato) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -333,147 +335,51 @@
             animation: alarmRing 0.95s ease-in-out infinite;
             transform-origin: top center;
         }
-
-        /* ======================================================================
-           SIGLA INTRODUTTIVA CINEMATOGRAFICA (VIAGGIO TUNISI -> REJICHE)
-           ====================================================================== */
-        @keyframes introPulseGlow {
-            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.65)); }
-            50% { transform: scale(1.06); filter: drop-shadow(0 0 24px rgba(253, 224, 71, 0.95)); }
-        }
-        @keyframes introSlideUp {
-            0% { opacity: 0; transform: translateY(22px) scale(0.95); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes introRouteDraw {
-            0% { stroke-dashoffset: 340; }
-            100% { stroke-dashoffset: 0; }
-        }
-        @keyframes introTravelerMove {
-            0%   { left: 10%; top: 68%; transform: translate(-50%, -50%) scale(0.85); }
-            35%  { left: 38%; top: 32%; transform: translate(-50%, -50%) scale(1.02); }
-            70%  { left: 68%; top: 62%; transform: translate(-50%, -50%) scale(1.05); }
-            100% { left: 90%; top: 28%; transform: translate(-50%, -50%) scale(1.15); }
-        }
-        @keyframes introTwinkle {
-            0%, 100% { opacity: 0.25; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.25); }
-        }
-        .intro-glow { animation: introPulseGlow 2.4s ease-in-out infinite; }
-        .intro-reveal { animation: introSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-        .intro-route-path {
-            stroke-dasharray: 340;
-            stroke-dashoffset: 340;
-            animation: introRouteDraw 4.6s ease-in-out forwards;
-        }
-        .intro-traveler {
-            position: absolute;
-            animation: introTravelerMove 4.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
-        }
-        .intro-star {
-            position: absolute;
-            border-radius: 9999px;
-            background: #fef08a;
-            animation: introTwinkle 2s ease-in-out infinite;
-        }
     </style>
 </head>
 <body class="flex flex-col min-h-[100dvh]">
 
     <!-- ======================================================================
-         0. SIGLA INTRODUTTIVA ANIMATA (APERTURA DEL GIOCO)
+         0. SIGLA INTRODUTTIVA VIDEO (intro.mp4 A SCHERMO INTERO ALL'APERTURA)
          ====================================================================== -->
-    <div id="intro-splash-screen" class="fixed inset-0 z-[60] flex flex-col items-center justify-between p-5 sm:p-8 text-white overflow-hidden"
-         style="background: radial-gradient(circle at 50% 22%, rgba(251, 191, 36, 0.32) 0%, transparent 48%), linear-gradient(180deg, #090d26 0%, #1e3a8a 52%, #0284c7 86%, #fef3c7 100%);">
+    <div id="intro-splash-screen" class="fixed inset-0 z-[60] flex flex-col items-center justify-between bg-[#09152e] text-white overflow-hidden">
+        <!-- Video MP4 a schermo intero (mettere intro.mp4 nella stessa cartella di index.html) -->
+        <video id="intro-video-player"
+               src="intro.mp4"
+               autoplay
+               muted
+               playsinline
+               preload="auto"
+               onended="skipIntroSplash()"
+               onerror="skipIntroSplash()"
+               class="absolute inset-0 w-full h-full object-contain sm:object-cover bg-[#09152e]">
+        </video>
 
-        <!-- Stelline scintillanti sullo sfondo -->
-        <div class="intro-star w-1.5 h-1.5" style="top:12%; left:16%; animation-delay:0.1s"></div>
-        <div class="intro-star w-2 h-2" style="top:18%; left:82%; animation-delay:0.6s"></div>
-        <div class="intro-star w-1.5 h-1.5" style="top:28%; left:28%; animation-delay:1.1s"></div>
-        <div class="intro-star w-2 h-2" style="top:15%; left:54%; animation-delay:0.4s"></div>
-        <div class="intro-star w-1.5 h-1.5" style="top:34%; left:74%; animation-delay:1.4s"></div>
+        <!-- Barra superiore sopra il video con Audio & Salta -->
+        <div class="relative z-10 w-full max-w-2xl flex items-center justify-between p-4 sm:p-6 bg-gradient-to-b from-black/65 via-black/30 to-transparent">
+            <button type="button" id="intro-mute-btn" onclick="toggleIntroVideoSound()"
+                class="px-3.5 py-2 rounded-full bg-black/55 hover:bg-black/75 active:scale-95 border border-[#fde047]/70 text-xs font-extrabold text-[#fef08a] backdrop-blur-md shadow-lg transition flex items-center gap-1.5">
+                <span id="intro-mute-icon">🔇</span>
+                <span id="intro-mute-label">Attiva Audio Video</span>
+            </button>
 
-        <!-- Barra superiore con pulsante Salta -->
-        <div class="w-full max-w-md flex items-center justify-between z-10">
-            <span class="font-arabic-ornate text-sm sm:text-base text-[#fde047] font-bold tracking-wide">
-                ۞ رحلة العمر في تونس ۞
-            </span>
             <button type="button" onclick="skipIntroSplash()"
-                class="px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 border border-[#fde047]/60 text-xs font-extrabold text-[#fef08a] backdrop-blur-sm shadow-lg transition">
-                Fout el Intro ⏭️
+                class="px-4 py-2 rounded-full bg-black/55 hover:bg-black/75 active:scale-95 border border-[#fde047]/70 text-xs font-extrabold text-[#fef08a] backdrop-blur-md shadow-lg transition">
+                Fout el Intro (Salta) ⏭️
             </button>
         </div>
 
-        <!-- Centro Scena: Coppia Anime + Mappa del Viaggio da Tunisi a Rejiche -->
-        <div class="w-full max-w-md flex flex-col items-center text-center my-auto z-10">
-            <div class="inline-flex items-center gap-1.5 bg-[#1e3a8a]/80 border border-[#fbbf24] text-[#fde047] text-[11px] font-extrabold px-3.5 py-1 rounded-full shadow-lg mb-3 intro-reveal">
-                <span>✨</span><span>Ousama &amp; Ones Presentano</span><span>🇹🇳</span>
-            </div>
-
-            <!-- Ritratti Anime grandi affiancati con cuore centrale -->
-            <div class="flex items-center justify-center gap-3 sm:gap-5 mb-3 intro-reveal" style="animation-delay: 0.15s;">
-                <div id="intro-av-ousama" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#38bdf8] shadow-2xl overflow-hidden bg-white intro-glow"></div>
-                <div class="flex flex-col items-center">
-                    <span class="text-3xl sm:text-4xl animate-bounce">💖</span>
-                    <span class="font-arabic-ornate text-xs text-[#fde047] font-bold mt-0.5">حبّنا</span>
-                </div>
-                <div id="intro-av-ones" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#fb7185] shadow-2xl overflow-hidden bg-white intro-glow" style="animation-delay: 0.6s;"></div>
-            </div>
-
-            <h1 class="font-story text-3xl sm:text-4xl font-extrabold text-[#fef08a] drop-shadow-[0_3px_10px_rgba(0,0,0,0.5)] intro-reveal" style="animation-delay: 0.25s;">
-                تونسوبولي • Tunisopoly
-            </h1>
-            <p id="intro-subtitle" class="text-xs sm:text-sm font-bold text-[#e0f2fe] mt-1 mb-4 min-h-[1.5rem] intro-reveal" style="animation-delay: 0.35s;">
-                Men Tounes el 3asma... 🇹🇳
-            </p>
-
-            <!-- Percorso animato sulla costa tunisina fino a Bahr Rejiche -->
-            <div class="w-full h-28 sm:h-32 rounded-3xl bg-[#0f172a]/55 border-2 border-[#fbbf24]/80 backdrop-blur-md relative overflow-hidden shadow-2xl px-3 py-2">
-                <svg viewBox="0 0 320 110" class="w-full h-full overflow-visible">
-                    <path d="M 32 75 Q 120 35, 218 68 T 288 30" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4" stroke-dasharray="6 6" stroke-linecap="round"/>
-                    <path d="M 32 75 Q 120 35, 218 68 T 288 30" fill="none" stroke="#fbbf24" stroke-width="4.5" stroke-linecap="round" class="intro-route-path"/>
-                </svg>
-
-                <!-- Tappe lungo la rotta -->
-                <div class="absolute left-[10%] top-[76%] -translate-x-1/2 text-center">
-                    <span class="text-base block leading-none">🕌</span>
-                    <span class="text-[9px] font-extrabold text-[#fde047]">Tunisi</span>
-                </div>
-                <div class="absolute left-[38%] top-[16%] -translate-x-1/2 text-center">
-                    <span class="text-base block leading-none">🧿</span>
-                    <span class="text-[9px] font-extrabold text-[#bae6fd]">Sidi Bou Said</span>
-                </div>
-                <div class="absolute left-[68%] top-[72%] -translate-x-1/2 text-center">
-                    <span class="text-base block leading-none">🦩</span>
-                    <span class="text-[9px] font-extrabold text-[#fed7aa]">Djerba</span>
-                </div>
-                <div class="absolute left-[90%] top-[12%] -translate-x-1/2 text-center">
-                    <span class="text-lg block leading-none">👑</span>
-                    <span class="text-[9px] font-extrabold text-[#fde047]">Rejiche</span>
-                </div>
-
-                <!-- Pedina viaggiante animata lungo la rotta -->
-                <div class="intro-traveler flex items-center -space-x-2">
-                    <div id="intro-mini-0" class="w-8 h-8 rounded-full border-2 border-[#38bdf8] overflow-hidden bg-white shadow-lg"></div>
-                    <div id="intro-mini-1" class="w-8 h-8 rounded-full border-2 border-[#fb7185] overflow-hidden bg-white shadow-lg"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Barra di avanzamento della sigla + Pulsante Avvio Rapido -->
-        <div class="w-full max-w-md z-10 flex flex-col items-center gap-2.5">
-            <div class="w-full h-2 rounded-full bg-white/20 overflow-hidden border border-[#fbbf24]/50">
-                <div id="intro-progress-bar" class="h-full bg-gradient-to-r from-[#38bdf8] via-[#fde047] to-[#fb7185] transition-all duration-150" style="width: 0%;"></div>
-            </div>
+        <!-- Barra inferiore con pulsante rapido di accesso al gioco -->
+        <div class="relative z-10 w-full max-w-md p-4 sm:p-6 bg-gradient-to-t from-black/75 via-black/35 to-transparent flex flex-col items-center gap-2">
             <button type="button" onclick="skipIntroSplash()"
-                class="w-full py-3 rounded-2xl btn-gold font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-xl">
+                class="w-full py-3 rounded-2xl btn-gold font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-2xl">
                 <span>Od'khol lel Lo3ba! (Entra)</span><span>🎲🇹🇳</span>
             </button>
         </div>
     </div>
 
     <!-- ======================================================================
-         1. SCHERMATA INIZIALE DI BENVENUTO (OUSAMA & ONES IN VIAGGIO IN TUNISIA)
+         1. SCHERMATA INIZIALE DI BENVENUTO (VIAGGIO IN TUNISIA 2-4 GIOCATORI)
          ====================================================================== -->
     <div id="welcome-screen" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
          style="background: radial-gradient(circle at 50% 15%, rgba(254, 240, 138, 0.65) 0%, transparent 45%), linear-gradient(180deg, #1e3a8a 0%, #2563eb 38%, #38bdf8 72%, #e0f2fe 100%);">
@@ -637,11 +543,11 @@
                 </div>
             </div>
 
-            <!-- Toggle Musica Tunisina Rilassante -->
+            <!-- Toggle Musica Tunisina -->
             <div class="flex items-center justify-between bg-[#fef9c3] px-3.5 py-2 rounded-2xl border-2 border-[#fbbf24] mb-4">
                 <div class="text-xs font-extrabold text-[#92400e] flex items-center gap-1.5">
                     <span>🎶</span>
-                    <span>Mousika Tounsia Hadiya (Oud Lounge)</span>
+                    <span>Mousika Tounsia (Mezwed &amp; Darbuka)</span>
                 </div>
                 <button type="button" id="lobby-music-btn" onclick="toggleMusic(true)"
                     class="px-3 py-1 rounded-xl bg-[#16a34a] text-white font-extrabold text-[11px] shadow">
@@ -658,7 +564,7 @@
     </div>
 
     <!-- ======================================================================
-         2. HEADER SUPERIORE MEDITERRANEO + AUDIO ORIENTAL LOUNGE
+         2. HEADER SUPERIORE MEDITERRANEO + AUDIO TUNISINO
          ====================================================================== -->
     <header class="bg-gradient-to-r from-[#1e3a8a] via-[#1d4ed8] to-[#2563eb] text-white px-3 py-2 flex items-center justify-between border-b-2 border-[#fbbf24] shadow-lg z-30">
         <div class="flex items-center gap-2 min-w-0">
@@ -670,7 +576,7 @@
                         تونس ➔ الرجيش
                     </span>
                 </div>
-                <p id="header-sub-status" class="text-[10px] text-[#bae6fd] truncate">Ousama &amp; Ones • Safra fi Tounes</p>
+                <p id="header-sub-status" class="text-[10px] text-[#bae6fd] truncate">Safra fi Tounes • 2-4 Joueurs</p>
             </div>
         </div>
 
@@ -678,7 +584,7 @@
             <button onclick="toggleMusic()" id="btn-music"
                 class="px-2.5 py-1.5 rounded-xl bg-white/15 border border-white/30 text-[11px] font-extrabold flex items-center gap-1">
                 <span id="music-icon">🎶</span>
-                <span class="hidden sm:inline" id="music-label">Mousika Hadiya</span>
+                <span class="hidden sm:inline" id="music-label">Mousika Tounsia</span>
             </button>
             <button onclick="toggleSound()" class="px-2 py-1.5 rounded-xl bg-white/15 border border-white/30 text-[11px] font-extrabold" title="Effetti Sonori">
                 <span id="sound-icon">🔊</span>
@@ -712,7 +618,7 @@
             </span>
         </div>
 
-        <!-- SCHEDE GIOCATORI CON NUOVI AVATAR DISNEY/CHIBI 3D & SALDO DATTERI D'ORO -->
+        <!-- SCHEDE GIOCATORI CON AVATAR COLORATI & SALDO DATTERI D'ORO -->
         <div id="players-hud" class="grid grid-cols-2 gap-2"></div>
 
         <!-- TABELLONE MONOPOLY TUNISIA 7x7 (24 CASELLE PERIMETRALI CON CALLIGRAFIA ORIENTALE) -->
@@ -750,17 +656,13 @@
 
                     <!-- Villaggio bianco e blu di Sidi Bou Said a sinistra -->
                     <g opacity="0.9">
-                        <!-- Casette bianche -->
                         <rect x="12" y="158" width="44" height="44" rx="3" fill="#ffffff" stroke="#93c5fd" stroke-width="1.2"/>
                         <rect x="52" y="168" width="38" height="34" rx="3" fill="#f8fafc" stroke="#93c5fd" stroke-width="1.2"/>
-                        <!-- Cupole blu cobalto -->
                         <path d="M18 158 A16 15 0 0 1 50 158 Z" fill="#1d4ed8"/>
                         <path d="M58 168 A13 12 0 0 1 84 168 Z" fill="#2563eb"/>
-                        <!-- Minareto bianco-blu -->
                         <rect x="88" y="132" width="16" height="70" rx="2" fill="#ffffff" stroke="#93c5fd" stroke-width="1.2"/>
                         <rect x="86" y="146" width="20" height="5" rx="1" fill="#1d4ed8"/>
                         <path d="M89 132 A7 8 0 0 1 103 132 Z" fill="#1d4ed8"/>
-                        <!-- Porta ad arco tipica blu con borchie -->
                         <path d="M27 202 L27 183 A7 7 0 0 1 41 183 L41 202 Z" fill="#1e40af"/>
                         <rect x="65" y="179" width="10" height="12" rx="2" fill="#2563eb"/>
                     </g>
@@ -799,7 +701,7 @@
                     </div>
                 </div>
 
-                <!-- Indicatore Turno con Grande Ritratto -->
+                <!-- Indicatore Turno con Grande Ritratto + Verso Animale -->
                 <div id="center-turn-pill" class="relative z-10 flex items-center gap-2 bg-white/95 border-2 border-[#f59e0b] px-3 py-1 rounded-full shadow-md"></div>
 
                 <!-- Veri Dadi Cubici 3D (6 facce con rotazione su X, Y, Z) -->
@@ -839,13 +741,13 @@
     </div>
 
     <!-- ======================================================================
-         MOTORE MONOPOLY TUNISIA + AVATAR DISNEY CHIBI 3D PIENI CON PALLONCINI
+         MOTORE MONOPOLY TUNISIA + VIDEO INTRO MP4 + AVATAR TUNISINI + ANIMALI
          ====================================================================== -->
     <script>
         /* ======================================================================
            1. AVATAR COLORATI DI 4 PERSONAGGI TUNISINI (2 UOMINI & 2 DONNE)
-              0: Mehdi (Uomo - Chechia & Jebba Blu)
-              1: Yasmine (Donna - Machmoum Gelsomino & Abito Corallo-Oro)
+              0: Mehdi (Uomo - Chechia & Jebba Blu senza bianco)
+              1: Yasmine (Donna - Machmoum & Abito Corallo-Oro senza bianco)
               2: Sami (Uomo - Turban Sahariano & Gilet Smeraldo)
               3: Amira (Donna - Gioielli Berberi & Foulard Viola-Turchese)
            ====================================================================== */
@@ -877,35 +779,29 @@
                             <stop offset="100%" stop-color="#1e3a8a"/>
                         </linearGradient>
                     </defs>
-                    <!-- Sfondo soleggiato Sidi Bou Said -->
                     <circle cx="60" cy="60" r="60" fill="url(#mehBg)"/>
                     <path d="M0 82 Q60 75 120 82 L120 120 L0 120 Z" fill="#0369a1"/>
                     <path d="M88 68 A9 9 0 0 1 106 68 Z" fill="#2563eb" stroke="#fde047" stroke-width="1.2"/>
                     <rect x="86" y="68" width="22" height="14" rx="2" fill="#38bdf8"/>
 
-                    <!-- Jebba Tunisina Blu Reale con ricami dorati e camicia zafferano -->
                     <path d="M20 115 C24 91, 38 84, 60 84 C82 84, 96 91, 100 115 Z" fill="url(#mehJebba)" stroke="#1e1b4b" stroke-width="2"/>
                     <path d="M46 85 L60 113 L74 85 Z" fill="#fde047" stroke="#b45309" stroke-width="1.6"/>
                     <path d="M43 86 L55 113 M77 86 L65 113" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round"/>
                     <rect x="49" y="72" width="22" height="16" rx="8" fill="url(#mehSkin)" stroke="#451a03" stroke-width="1.8"/>
 
-                    <!-- Orecchie e Viso solare -->
                     <ellipse cx="32" cy="52" rx="5.2" ry="8" fill="url(#mehSkin)" stroke="#451a03" stroke-width="1.7"/>
                     <ellipse cx="88" cy="52" rx="5.2" ry="8" fill="url(#mehSkin)" stroke="#451a03" stroke-width="1.7"/>
                     <path d="M34 44 C34 23, 86 23, 86 44 L84 58 C83 72, 72 80, 60 80 C48 80, 37 72, 36 58 Z"
                           fill="url(#mehSkin)" stroke="#451a03" stroke-width="2"/>
 
-                    <!-- Capelli scuri + Chechia Rossa tradizionale con nappa nera -->
                     <path d="M34 44 C34 34, 43 30, 60 30 C77 30, 86 34, 86 44 C83 39, 74 37, 60 37 C46 37, 37 39, 34 44 Z" fill="#18181b"/>
                     <path d="M38 35 C38 14, 82 14, 82 35 Z" fill="url(#mehChechia)" stroke="#451a03" stroke-width="2"/>
                     <path d="M60 18 Q78 21 86 38" fill="none" stroke="#18181b" stroke-width="2.8" stroke-linecap="round"/>
 
-                    <!-- Barba curata + Baffi -->
                     <path d="M36 52 C37 68, 45 79, 60 80 C75 79, 83 68, 84 52 L80 55 C79 65, 72 72, 60 72 C48 72, 41 65, 40 55 Z"
                           fill="#3b2211" stroke="#27150a" stroke-width="1.3"/>
                     <path d="M48 62 C54 59, 66 59, 72 62 C70 65, 65 64, 60 64 C55 64, 50 65, 48 62 Z" fill="#3b2211"/>
 
-                    <!-- Sopracciglia, Occhi caldi ambrati e Sorriso -->
                     <path d="M40 41 C44 38, 51 38, 55 41" fill="none" stroke="#27150a" stroke-width="2.6" stroke-linecap="round"/>
                     <path d="M65 41 C69 38, 76 38, 80 41" fill="none" stroke="#27150a" stroke-width="2.6" stroke-linecap="round"/>
                     <ellipse cx="48" cy="49.5" rx="6.3" ry="7" fill="#fef3c7" stroke="#1e293b" stroke-width="1.6"/>
@@ -946,27 +842,22 @@
                             <stop offset="100%" stop-color="#9a3412"/>
                         </linearGradient>
                     </defs>
-                    <!-- Sfondo tramonto corallo-oro mediterraneo -->
                     <circle cx="60" cy="60" r="60" fill="url(#yasBg)"/>
                     <circle cx="96" cy="28" r="11" fill="#fde047" opacity="0.9"/>
                     <path d="M0 84 Q60 78 120 84 L120 120 L0 120 Z" fill="#9f1239"/>
 
-                    <!-- Capelli scuri ondulati -->
                     <path d="M23 45 C17 72, 18 98, 26 115 L94 115 C102 98, 103 72, 97 45 Z" fill="url(#yasHair)" stroke="#09090b" stroke-width="1.9"/>
 
-                    <!-- Abito tradizionale tunisino corallo, turchese e oro -->
                     <path d="M25 115 C28 94, 41 87, 60 87 C79 87, 92 94, 95 115 Z" fill="url(#yasDress)" stroke="#78350f" stroke-width="1.9"/>
                     <path d="M44 88 L60 106 L76 88" fill="none" stroke="#fde047" stroke-width="2.5" stroke-linecap="round"/>
                     <circle cx="60" cy="96" r="3.5" fill="#06b6d4" stroke="#fde047" stroke-width="1.2"/>
                     <rect x="52" y="71" width="16" height="19" rx="7" fill="url(#yasSkin)" stroke="#451a03" stroke-width="1.7"/>
 
-                    <!-- Viso solare + Guance rosate -->
                     <path d="M36 43 C36 23, 84 23, 84 43 L82 58 C81 71, 71 79, 60 79 C49 79, 39 71, 38 58 Z"
                           fill="url(#yasSkin)" stroke="#451a03" stroke-width="2"/>
                     <ellipse cx="43" cy="59" rx="5.5" ry="3.3" fill="#fb7185" opacity="0.6"/>
                     <ellipse cx="77" cy="59" rx="5.5" ry="3.3" fill="#fb7185" opacity="0.6"/>
 
-                    <!-- Grandi Occhi Expressivi -->
                     <path d="M40 41 C44 38, 50 38, 54 41" fill="none" stroke="#18181b" stroke-width="2.3" stroke-linecap="round"/>
                     <path d="M66 41 C70 38, 76 38, 80 41" fill="none" stroke="#18181b" stroke-width="2.3" stroke-linecap="round"/>
                     <ellipse cx="48" cy="50.5" rx="6.6" ry="7.3" fill="#fef3c7" stroke="#18181b" stroke-width="1.7"/>
@@ -981,15 +872,12 @@
                     <circle cx="69.6" cy="48.2" r="2.2" fill="#fde047"/>
                     <path d="M65 47 Q72 42 79.5 47" fill="none" stroke="#09090b" stroke-width="2.5" stroke-linecap="round"/>
 
-                    <!-- Sorriso luminoso -->
                     <path d="M53.5 65.5 Q60 70.8 66.5 65.5" fill="#fb7185" stroke="#be123c" stroke-width="1.6" stroke-linecap="round"/>
 
-                    <!-- Ciocche frontali + Machmoum dorato + Orecchini d'oro -->
                     <path d="M32 44 C31 22, 55 18, 60 27 C65 18, 89 22, 88 44 C87 65, 91 90, 85 112 L78 112 C81 89, 80 63, 80 44 C73 36, 65 32, 60 30 C55 32, 47 36, 40 44 C40 63, 39 89, 42 112 L35 112 C29 90, 33 65, 32 44 Z"
                           fill="url(#yasHair)" stroke="#09090b" stroke-width="1.9"/>
                     <circle cx="35" cy="61" r="2.8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
                     <circle cx="85" cy="61" r="2.8" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
-                    <!-- Machmoum oro e ambra sull'orecchio -->
                     <circle cx="83" cy="31" r="5.5" fill="#fde047" stroke="#b45309" stroke-width="1.6"/>
                     <circle cx="88" cy="36" r="4.5" fill="#fbbf24" stroke="#b45309" stroke-width="1.5"/>
                     <circle cx="83" cy="31" r="2" fill="#e11d48"/>
@@ -1022,30 +910,24 @@
                             <stop offset="100%" stop-color="#064e3b"/>
                         </linearGradient>
                     </defs>
-                    <!-- Sfondo Oasi del Sud (Tozeur / Sahara) -->
                     <circle cx="60" cy="60" r="60" fill="url(#samBg)"/>
                     <path d="M0 84 Q35 76 75 83 T120 80 L120 120 L0 120 Z" fill="#f59e0b"/>
 
-                    <!-- Gilet tunisino verde smeraldo ricamato -->
                     <path d="M21 115 C24 91, 38 84, 60 84 C82 84, 96 91, 99 115 Z" fill="url(#samVest)" stroke="#064e3b" stroke-width="2"/>
                     <path d="M46 85 L60 113 L74 85 Z" fill="#ffffff" stroke="#d97706" stroke-width="1.6"/>
                     <rect x="49" y="72" width="22" height="16" rx="8" fill="url(#samSkin)" stroke="#451a03" stroke-width="1.8"/>
 
-                    <!-- Viso solare sahariano -->
                     <path d="M35 44 C35 24, 85 24, 85 44 L83 58 C82 72, 72 80, 60 80 C48 80, 38 72, 37 58 Z"
                           fill="url(#samSkin)" stroke="#451a03" stroke-width="2"/>
 
-                    <!-- Chèche / Turbante Sahariano tradizionale avvolto -->
                     <path d="M31 39 C30 16, 90 16, 89 39 C81 33, 39 33, 31 39 Z" fill="url(#samTurban)" stroke="#92400e" stroke-width="1.9"/>
                     <path d="M34 31 Q60 22 86 31" fill="none" stroke="#d97706" stroke-width="2"/>
                     <path d="M84 36 C91 48, 92 68, 86 84 L79 82 C83 68, 82 50, 78 38 Z" fill="url(#samTurban)" stroke="#92400e" stroke-width="1.7"/>
 
-                    <!-- Pizzetto simpatico e sorriso -->
                     <path d="M51 71 Q60 78 69 71 L65 78 Q60 81 55 78 Z" fill="#27150a"/>
                     <path d="M40 42 C44 39, 51 39, 55 42" fill="none" stroke="#27150a" stroke-width="2.5" stroke-linecap="round"/>
                     <path d="M65 42 C69 39, 76 39, 80 42" fill="none" stroke="#27150a" stroke-width="2.5" stroke-linecap="round"/>
 
-                    <!-- Occhi caldi e luminosi -->
                     <ellipse cx="48" cy="50" rx="6.3" ry="6.9" fill="#ffffff" stroke="#1e293b" stroke-width="1.6"/>
                     <circle cx="48.3" cy="50.4" r="4.4" fill="#3b2211"/>
                     <circle cx="48.3" cy="50.4" r="2" fill="#000000"/>
@@ -1079,24 +961,20 @@
                             <stop offset="100%" stop-color="#581c87"/>
                         </linearGradient>
                     </defs>
-                    <!-- Sfondo stellato viola-turchese -->
                     <circle cx="60" cy="60" r="60" fill="url(#amiBg)"/>
                     <path d="M22 26 L24 31 L29 33 L24 35 L22 40 L20 35 L15 33 L20 31 Z" fill="#fde047"/>
                     <path d="M98 24 L99.5 28 L103.5 29.5 L99.5 31 L98 35 L96.5 31 L92.5 29.5 L96.5 28 Z" fill="#fde047"/>
 
-                    <!-- Foulard / Velo decorativo + Abito Turchese-Viola -->
                     <path d="M24 44 C19 72, 19 98, 27 115 L93 115 C101 98, 101 72, 96 44 Z" fill="url(#amiScarf)" stroke="#3b0764" stroke-width="1.9"/>
                     <path d="M26 115 C29 94, 41 87, 60 87 C79 87, 91 94, 94 115 Z" fill="#06b6d4" stroke="#164e63" stroke-width="1.9"/>
                     <path d="M43 88 Q60 98 77 88" fill="none" stroke="#fde047" stroke-width="2.6" stroke-linecap="round"/>
                     <rect x="52" y="71" width="16" height="19" rx="7" fill="url(#amiSkin)" stroke="#451a03" stroke-width="1.7"/>
 
-                    <!-- Viso dolce + Diadema / Gioiello berbero d'oro sulla fronte -->
                     <path d="M36 43 C36 23, 84 23, 84 43 L82 58 C81 71, 71 79, 60 79 C49 79, 39 71, 38 58 Z"
                           fill="url(#amiSkin)" stroke="#451a03" stroke-width="2"/>
                     <path d="M37 37 Q60 32 83 37" fill="none" stroke="#fbbf24" stroke-width="2.4"/>
                     <polygon points="60,32 63.5,37 60,42 56.5,37" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
 
-                    <!-- Guance rosate + Grandi Occhi Verde Smeraldo -->
                     <ellipse cx="43" cy="59" rx="5.3" ry="3.2" fill="#f472b6" opacity="0.5"/>
                     <ellipse cx="77" cy="59" rx="5.3" ry="3.2" fill="#f472b6" opacity="0.5"/>
                     <ellipse cx="48" cy="50.5" rx="6.5" ry="7.2" fill="#ffffff" stroke="#1e1b18" stroke-width="1.6"/>
@@ -1111,10 +989,8 @@
                     <circle cx="69.7" cy="48.2" r="2.1" fill="#ffffff"/>
                     <path d="M65 47 Q72 42 79.5 47" fill="none" stroke="#09090b" stroke-width="2.4" stroke-linecap="round"/>
 
-                    <!-- Sorriso dolce -->
                     <path d="M53.5 65.5 Q60 70.5 66.5 65.5" fill="#fb7185" stroke="#be123c" stroke-width="1.6" stroke-linecap="round"/>
 
-                    <!-- Capelli castani ricci che spuntano dal foulard + Orecchini d'oro -->
                     <path d="M34 44 C33 23, 55 19, 60 28 C65 19, 87 23, 86 44 C79 35, 68 32, 60 31 C52 32, 41 35, 34 44 Z"
                           fill="#451a03" stroke="#1e1b18" stroke-width="1.8"/>
                     <circle cx="35" cy="61" r="3" fill="#fbbf24" stroke="#92400e" stroke-width="1"/>
@@ -1123,66 +999,62 @@
             }
         ];
 
-        // Inserisce subito gli avatar colorati dei 4 personaggi tunisini nella schermata di benvenuto e nella sigla introduttiva
+        // Inserisce subito gli avatar colorati dei 4 personaggi tunisini nella schermata di benvenuto
         [0, 1, 2, 3].forEach(i => {
             const lobbyAv = document.getElementById(`lobby-av-${i}`);
             if (lobbyAv) lobbyAv.innerHTML = PIXAR_AVATARS[i].svg;
             const miniEl = document.getElementById(`mini-lobby-av-${i}`);
             if (miniEl) miniEl.innerHTML = PIXAR_AVATARS[i].svg;
         });
-        document.getElementById('intro-av-ousama').innerHTML = PIXAR_AVATARS[0].svg;
-        document.getElementById('intro-av-ones').innerHTML = PIXAR_AVATARS[1].svg;
-        document.getElementById('intro-mini-0').innerHTML = PIXAR_AVATARS[0].svg;
-        document.getElementById('intro-mini-1').innerHTML = PIXAR_AVATARS[1].svg;
 
         /* ======================================================================
-           1B. CONTROLLO SIGLA INTRODUTTIVA ANIMATA (5.2 SECONDI + TASTO SALTA)
+           1B. CONTROLLO VIDEO INTRODUTTIVO MP4 (intro.mp4 + TASTO AUDIO & SALTA)
            ====================================================================== */
-        let introTimerInterval = null;
-
         function runIntroSplash() {
-            const splash = document.getElementById('intro-splash-screen');
-            const bar = document.getElementById('intro-progress-bar');
-            const sub = document.getElementById('intro-subtitle');
-            if (!splash) return;
+            const video = document.getElementById('intro-video-player');
+            if (!video) return;
 
-            const captions = [
-                { at: 0,  text: 'Men Tounes el 3asma... 🇹🇳' },
-                { at: 32, text: 'N3addiw 3la Sidi Bou Said w Djerba... 🧿🦩' },
-                { at: 68, text: 'Hatta nouslou l\'ahla bhar fi Rejiche! 👑💖' }
-            ];
-
-            let pct = 0;
-            introTimerInterval = setInterval(() => {
-                pct += 2;
-                if (bar) bar.style.width = `${Math.min(pct, 100)}%`;
-
-                const cue = captions.slice().reverse().find(c => pct >= c.at);
-                if (cue && sub && sub.textContent !== cue.text) {
-                    sub.textContent = cue.text;
-                }
-
-                if (pct >= 100) {
-                    skipIntroSplash();
-                }
-            }, 100); // ~5 secondi totali
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {});
+            }
         }
 
-        window.skipIntroSplash = function() {
-            if (introTimerInterval) {
-                clearInterval(introTimerInterval);
-                introTimerInterval = null;
+        window.toggleIntroVideoSound = function() {
+            const video = document.getElementById('intro-video-player');
+            const icon = document.getElementById('intro-mute-icon');
+            const label = document.getElementById('intro-mute-label');
+            if (!video) return;
+
+            video.muted = !video.muted;
+            if (!video.muted) {
+                video.play().catch(() => {});
+                if (icon) icon.textContent = '🔊';
+                if (label) label.textContent = 'Audio Attivo';
+            } else {
+                if (icon) icon.textContent = '🔇';
+                if (label) label.textContent = 'Attiva Audio Video';
             }
+        };
+
+        window.skipIntroSplash = function() {
+            const video = document.getElementById('intro-video-player');
+            if (video) {
+                try {
+                    video.pause();
+                    video.currentTime = 0;
+                } catch (e) {}
+            }
+
             const splash = document.getElementById('intro-splash-screen');
             if (splash && !splash.classList.contains('hidden')) {
                 splash.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
                 splash.style.opacity = '0';
-                splash.style.transform = 'scale(1.04)';
+                splash.style.transform = 'scale(1.03)';
                 setTimeout(() => {
                     splash.classList.add('hidden');
                 }, 460);
             }
-            // Avvia la musica lounge se l'utente tocca "Salta" o "Entra"
             ensureAudio();
             if (musicEnabled) startOrientalLounge();
         };
@@ -1194,7 +1066,6 @@
            2. TABELLONE MONOPOLY TUNISIA DA 24 CASELLE (CON CALLIGRAFIA ARABA TUNISINA)
            ====================================================================== */
         const TUNISIA_BOARD = [
-            // --- LATO INFERIORE (0 -> 6) ---
             { idx: 0,  r: 7, c: 7, type: 'start',    name: 'Tunisi',          arName: 'تونس',        icon: '🇹🇳', color: '#1e3a8a', desc: 'Intilaqa men Tounes! Kol marra tet3adda men houni tekhoud +200 🌴!' },
             { idx: 1,  r: 7, c: 6, type: 'property', name: 'La Goulette',     arName: 'حلق الوادي',   icon: '🦐', color: '#0284c7', price: 100, rent: 25,  buildCost: 60,  desc: 'Hout mechwi 3al bhar fi Halk el Oued!' },
             { idx: 2,  r: 7, c: 5, type: 'chance',   name: 'Zhar',            arName: 'زهر',         icon: '🍀', color: '#16a34a', desc: 'Es\'hab warka men Zhar el Safra!' },
@@ -1203,14 +1074,12 @@
             { idx: 5,  r: 7, c: 2, type: 'property', name: 'Sidi Bou Said',   arName: 'سيدي بوسعيد', icon: '🧿', color: '#2563eb', price: 160, rent: 40,  buildCost: 80,  desc: 'El abyadh w el azra9 fou9 el bhar!' },
             { idx: 6,  r: 7, c: 1, type: 'visit',    name: 'El Medina',       arName: 'المدينة',     icon: '🏮', color: '#f59e0b', desc: 'Souk el Medina: tfarrej w chouf el 3torat w el chechia.' },
 
-            // --- LATO SINISTRO (7 -> 11) ---
             { idx: 7,  r: 6, c: 1, type: 'property', name: 'Nabeul',          arName: 'نابل',        icon: '🏺', color: '#ea580c', price: 180, rent: 45,  buildCost: 90,  desc: 'Medinet el fokhar w el zhar w el harissa!' },
             { idx: 8,  r: 5, c: 1, type: 'property', name: 'Hammamet',        arName: 'الحمامات',    icon: '🏖️', color: '#ea580c', price: 200, rent: 50,  buildCost: 100, desc: 'Yasmin Hammamet w el bhar el safi.' },
             { idx: 9,  r: 4, c: 1, type: 'chest',    name: 'Maktoub',         arName: 'مكتوب',       icon: '📜', color: '#7c3aed', desc: 'Chouf chnoua katblek el Maktoub!' },
             { idx: 10, r: 3, c: 1, type: 'property', name: 'Sousse',          arName: 'سوسة',        icon: '⛵', color: '#db2777', price: 220, rent: 55,  buildCost: 110, desc: 'Jawharet el Sahel w Port El Kantaoui.' },
             { idx: 11, r: 2, c: 1, type: 'property', name: 'Monastir',        arName: 'المنستير',    icon: '🏰', color: '#db2777', price: 240, rent: 60,  buildCost: 120, desc: 'Ribat el Monastir w el marina el jmila.' },
 
-            // --- LATO SUPERIORE (12 -> 18) ---
             { idx: 12, r: 1, c: 1, type: 'oasis',    name: 'El Waha',         arName: 'الواحة',      icon: '🌴', color: '#16a34a', bonus: 100, desc: 'Wahat Raha taht el nakhl! Tekhoud +100 🌴 hedya!' },
             { idx: 13, r: 1, c: 2, type: 'property', name: 'Kairouan',        arName: 'القيروان',    icon: '🕌', color: '#9333ea', price: 260, rent: 65,  buildCost: 130, desc: 'El Makroudh el asli w Jame3 Oqba!' },
             { idx: 14, r: 1, c: 3, type: 'chance',   name: 'Zhar',            arName: 'زهر',         icon: '🍀', color: '#16a34a', desc: 'Es\'hab warka men Zhar el Safra!' },
@@ -1219,15 +1088,13 @@
             { idx: 17, r: 1, c: 6, type: 'property', name: 'Tozeur',          arName: 'توزر',        icon: '🐪', color: '#b45309', price: 320, rent: 80,  buildCost: 160, desc: 'Ong Jmel w el sahra el dhahabeya!' },
             { idx: 18, r: 1, c: 7, type: 'traffic',  name: 'Louage',          arName: 'لواج',        icon: '🚐', color: '#e11d48', desc: 'El Louage m3abbi! Arja3 lel Souk el Medina!' },
 
-            // --- LATO DESTRO (19 -> 23, verso il gran finale REJICHE!) ---
             { idx: 19, r: 2, c: 7, type: 'property', name: 'Djerba',          arName: 'جربة',        icon: '🦩', color: '#0d9488', price: 350, rent: 90,  buildCost: 175, desc: 'Djerba la Douce, jaziret el ahlem!' },
             { idx: 20, r: 3, c: 7, type: 'chest',    name: 'Maktoub',         arName: 'مكتوب',       icon: '📜', color: '#7c3aed', desc: 'Chouf chnoua katblek el Maktoub!' },
             { idx: 21, r: 4, c: 7, type: 'property', name: 'Mahdia',          arName: 'المهدية',     icon: '⚓', color: '#0d9488', price: 380, rent: 100, buildCost: 190, desc: 'Skifa el Kahla w bhar Mahdia el azra9.' },
             { idx: 22, r: 5, c: 7, type: 'tax',      name: 'Brik & Lablabi',  arName: 'بريك ولبلابي', icon: '🍲', color: '#d97706', amount: 100, desc: '3cha tounsi bnin b\'zeff (-100 🌴).' },
-            { idx: 23, r: 6, c: 7, type: 'property', name: 'Bahr Rejiche',    arName: 'بحر الرجيش',  icon: '👑', color: '#e11d48', price: 450, rent: 130, buildCost: 220, desc: 'El Wجهة el Nihaiya! Ahla bhar w rmal dhahabi fi Rejiche! 💖' }
+            { idx: 23, r: 6, c: 7, type: 'property', name: 'Bahr Rejiche',    arName: 'بحر الرجيش',  icon: '👑', color: '#e11d48', price: 450, rent: 130, buildCost: 220, desc: 'El Wejha el Nihaiya! Ahla bhar w rmal dhahabi fi Rejiche! 💖' }
         ];
 
-        // Carte Zhar (Fortuna) e Maktoub (Imprevisti) in Derja Tunisino
         const ZHAR_CARDS = [
             { title: '🍀 زهر الحب • Zhar el Hob!', text: 'Tla9itou b\'ahla ghoroub chams fi Sidi Bou Said! Tekhoud +150 🌴!', delta: 150 },
             { title: '🍀 هدية من جربة • Hedya men Djerba!', text: 'Rbahtou tour b\'flouka fi bhar Djerba! Tekhoud +120 🌴!', delta: 120 },
@@ -1244,7 +1111,6 @@
 
         /* ======================================================================
            3. MUSICA TRADIZIONALE TUNISINA (MEZWED / DARBUKA & OUD TUNISINO)
-              Ritmo ternario tunisino allegro (6/8 Maghreb) su Maqam Hijaz Kar
            ====================================================================== */
         let soundEnabled = true;
         let musicEnabled = true;
@@ -1252,39 +1118,33 @@
         let musicTimer = null;
         let loungeStep = 0;
 
-        // Melodia tradizionale tunisina su Maqam Hijaz (Re - Mib - Fa# - Sol - La - Sib - Do - Re)
-        // Con ritmo ternario tipico tunisino (Doum - Tek - Tek - Doum - Tek)
         const LOUNGE_SEQUENCE = [
-            // Frase 1 (Tema tradizionale tunisino "Ya Bent Bladi / Fazzani")
-            { note: 587.33, chord: [146.83, 220.00], drum: 'dum' }, // D5
-            { note: 587.33, chord: null,             drum: 'tek' }, // D5
-            { note: 523.25, chord: null,             drum: 'tek' }, // C5
-            { note: 466.16, chord: [146.83, 220.00], drum: 'dum' }, // Bb4
-            { note: 440.00, chord: null,             drum: null  }, // A4
-            { note: 466.16, chord: null,             drum: 'tek' }, // Bb4
+            { note: 587.33, chord: [146.83, 220.00], drum: 'dum' },
+            { note: 587.33, chord: null,             drum: 'tek' },
+            { note: 523.25, chord: null,             drum: 'tek' },
+            { note: 466.16, chord: [146.83, 220.00], drum: 'dum' },
+            { note: 440.00, chord: null,             drum: null  },
+            { note: 466.16, chord: null,             drum: 'tek' },
 
-            // Frase 2 (Passaggio Hijaz con Fa# e Mib)
-            { note: 440.00, chord: [196.00, 293.66], drum: 'dum' }, // A4
-            { note: 392.00, chord: null,             drum: 'tek' }, // G4
-            { note: 369.99, chord: null,             drum: 'tek' }, // F#4
-            { note: 392.00, chord: [196.00, 293.66], drum: 'dum' }, // G4
-            { note: 440.00, chord: null,             drum: null  }, // A4
+            { note: 440.00, chord: [196.00, 293.66], drum: 'dum' },
+            { note: 392.00, chord: null,             drum: 'tek' },
+            { note: 369.99, chord: null,             drum: 'tek' },
+            { note: 392.00, chord: [196.00, 293.66], drum: 'dum' },
+            { note: 440.00, chord: null,             drum: null  },
             { note: null,   chord: null,             drum: 'tek' },
 
-            // Frase 3 (Risposta festosa Mezwed)
-            { note: 392.00, chord: [146.83, 220.00], drum: 'dum' }, // G4
-            { note: 369.99, chord: null,             drum: 'tek' }, // F#4
-            { note: 311.13, chord: null,             drum: 'tek' }, // Eb4
-            { note: 293.66, chord: [146.83, 220.00], drum: 'dum' }, // D4
-            { note: 369.99, chord: null,             drum: null  }, // F#4
-            { note: 392.00, chord: null,             drum: 'tek' }, // G4
+            { note: 392.00, chord: [146.83, 220.00], drum: 'dum' },
+            { note: 369.99, chord: null,             drum: 'tek' },
+            { note: 311.13, chord: null,             drum: 'tek' },
+            { note: 293.66, chord: [146.83, 220.00], drum: 'dum' },
+            { note: 369.99, chord: null,             drum: null  },
+            { note: 392.00, chord: null,             drum: 'tek' },
 
-            // Frase 4 (Cadenza tunisina sul Re)
-            { note: 440.00, chord: [110.00, 220.00], drum: 'dum' }, // A4
-            { note: 369.99, chord: null,             drum: 'tek' }, // F#4
-            { note: 311.13, chord: null,             drum: 'tek' }, // Eb4
-            { note: 293.66, chord: [146.83, 220.00], drum: 'dum' }, // D4
-            { note: 293.66, chord: null,             drum: 'tek' }, // D4
+            { note: 440.00, chord: [110.00, 220.00], drum: 'dum' },
+            { note: 369.99, chord: null,             drum: 'tek' },
+            { note: 311.13, chord: null,             drum: 'tek' },
+            { note: 293.66, chord: [146.83, 220.00], drum: 'dum' },
+            { note: 293.66, chord: null,             drum: 'tek' },
             { note: null,   chord: null,             drum: 'tek' }
         ];
 
@@ -1349,7 +1209,6 @@
                 ensureAudio();
                 const now = audioCtx.currentTime;
 
-                // 1. Bordone tradizionale di Mezwed / Gasba tunisino (quinta Re-La calda e morbida)
                 if (step.chord) {
                     step.chord.forEach(freq => {
                         const pad = audioCtx.createOscillator();
@@ -1368,7 +1227,6 @@
                     });
                 }
 
-                // 2. Oud & Zoukra/Mezwed tunisino pizzicato con eco leggero
                 if (step.note) {
                     [0, 0.14].forEach((delaySec, idx) => {
                         const startT = now + delaySec;
@@ -1382,7 +1240,6 @@
                         osc.type = 'triangle';
                         osc.frequency.setValueAtTime(step.note, startT);
 
-                        // Armonica d'ottava per il timbro tipico degli strumenti tunisini
                         subOsc.type = 'sine';
                         subOsc.frequency.setValueAtTime(step.note * 2, startT);
 
@@ -1410,7 +1267,6 @@
                     });
                 }
 
-                // 3. Darbuka Tunisina (Doum profondo e Tek secco e brillante)
                 if (step.drum === 'dum') {
                     const perc = audioCtx.createOscillator();
                     const pg = audioCtx.createGain();
@@ -1498,7 +1354,6 @@
                         o.start(now + i * 0.09); o.stop(now + i * 0.09 + 0.42);
                     });
                 } else if (type === 'alarm') {
-                    // Suono campanello d'allarme brillante "Naqous el Khatar!"
                     [880, 1174.66, 880, 1174.66, 1318.5].forEach((f, i) => {
                         const o = audioCtx.createOscillator();
                         const g = audioCtx.createGain();
@@ -1532,7 +1387,6 @@
                 const now = audioCtx.currentTime;
 
                 if (animalId === 'mucca') {
-                    // Mucca: "Muuuuu" profondo (sawtooth filtrato con vibrato lento)
                     const osc = audioCtx.createOscillator();
                     const filter = audioCtx.createBiquadFilter();
                     const gain = audioCtx.createGain();
@@ -1549,7 +1403,6 @@
                     osc.start(now); osc.stop(now + 0.78);
 
                 } else if (animalId === 'capra') {
-                    // Capra: "Me-e-e-e-e!" belato belante con modulazione LFO veloce
                     const osc = audioCtx.createOscillator();
                     const lfo = audioCtx.createOscillator();
                     const lfoGain = audioCtx.createGain();
@@ -1573,7 +1426,6 @@
                     osc.stop(now + 0.66); lfo.stop(now + 0.66);
 
                 } else if (animalId === 'gatto') {
-                    // Gatto: "Miaooo!" dolce con salita e discesa morbida
                     const osc = audioCtx.createOscillator();
                     const filter = audioCtx.createBiquadFilter();
                     const gain = audioCtx.createGain();
@@ -1590,7 +1442,6 @@
                     osc.start(now); osc.stop(now + 0.67);
 
                 } else if (animalId === 'gallina') {
-                    // Gallina: "Co-co-co-codè!" 4 colpetti rapidi + finale acuto
                     [0, 0.11, 0.22, 0.35].forEach((offset, idx) => {
                         const osc = audioCtx.createOscillator();
                         const gain = audioCtx.createGain();
@@ -1605,7 +1456,6 @@
                     });
 
                 } else if (animalId === 'oca') {
-                    // Oca: "Quack-Quack!" doppio verso nasale
                     [0, 0.22].forEach((offset) => {
                         const osc = audioCtx.createOscillator();
                         const filter = audioCtx.createBiquadFilter();
@@ -1623,7 +1473,6 @@
                     });
 
                 } else if (animalId === 'cane') {
-                    // Cane: "Bau! Bau!" doppio abbaio secco
                     [0, 0.21].forEach((offset) => {
                         const osc = audioCtx.createOscillator();
                         const gain = audioCtx.createGain();
@@ -1658,88 +1507,166 @@
         let playMode = 'online';
         let myOnlineRole = 0;
         let currentRoomCode = 'REJICHE';
-        let firebaseReady = false;
-        let dbRef = null;
-        let roomUnsubscribe = null;
+        let onlineConnected = false;
+        let mqttClient = null;
+        let localTabChannel = null;
+        let lastStateTimestamp = 0;
         let isRolling = false;
         let hasRolledThisTurn = false;
         let lastSyncedRollId = 0;
-        let localAlarmNotified = false;
+        const myClientId = 'tn_' + Math.random().toString(36).slice(2, 10);
 
         let gameState = {
             players: [
-                { id: 0, name: 'Mehdi', pos: 0, dates: 1200 },
-                { id: 1, name: 'Yasmine', pos: 0, dates: 1200 }
-            ],
-            turnIdx: 0,
-            ownership: {},
-            logs: [],
-            lastRoll: null,
-            currentTurnAnimal: TURN_ANIMALS[0],
-            onePropLeftAlerted: false,
-            finalRoundActive: false,
-            finalTurnsRemaining: 0,
-            gameOver: false
-        };
+// ... existing code ... -->
+        function initOnlineCloud() {
+            return new Promise((resolve) => {
+                if (onlineConnected && mqttClient && mqttClient.connected) {
+                    resolve(true);
+                    return;
+                }
+                if (typeof mqtt === 'undefined') {
+                    resolve(false);
+                    return;
+                }
+                try {
+                    if (mqttClient) {
+                        try { mqttClient.end(true); } catch (e) {}
+                    }
+                    const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+                        clientId: myClientId + '_' + Date.now(),
+                        clean: true,
+                        connectTimeout: 6000,
+                        reconnectPeriod: 2500
+                    });
 
-        window.setPlayerCount = function(count) {
-            selectedPlayerCount = count;
-            [2, 3, 4].forEach(c => {
-                const btn = document.getElementById(`pcount-btn-${c}`);
-                if (btn) {
-                    btn.className = c === count
-                        ? 'py-1.5 px-2 rounded-xl border-2 border-[#2563eb] bg-[#dbeafe] font-extrabold text-xs text-[#1e3a8a]'
-                        : 'py-1.5 px-2 rounded-xl border-2 border-[#cbd5e1] bg-white font-extrabold text-xs text-[#475569]';
+                    let settled = false;
+                    const timer = setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            resolve(false);
+                        }
+                    }, 6500);
+
+                    client.on('connect', () => {
+                        mqttClient = client;
+                        onlineConnected = true;
+                        if (!settled) {
+                            settled = true;
+                            clearTimeout(timer);
+                            resolve(true);
+                        }
+                    });
+
+                    client.on('error', () => {
+                        if (!settled) {
+                            settled = true;
+                            clearTimeout(timer);
+                            resolve(false);
+                        }
+                    });
+                } catch (err) {
+                    console.warn('Errore connessione broker online:', err);
+                    resolve(false);
                 }
             });
-            const slot2 = document.getElementById('lobby-slot-2');
-            const slot3 = document.getElementById('lobby-slot-3');
-            if (slot2) slot2.classList.toggle('hidden', count < 3);
-            if (slot3) slot3.classList.toggle('hidden', count < 4);
+        }
 
-            if (myOnlineRole >= count) myOnlineRole = 0;
-            setMyOnlineRole(myOnlineRole);
-        };
+        function getRoomTopic(roomCode) {
+            return `tunisopoly/ousamac94/rooms/v1/${roomCode}`;
+        }
 
-        window.refreshRoleButtons = function() {
-            const icons = ['💙', '🌸', '🌴', '🌼'];
-            const defaults = ['Mehdi', 'Yasmine', 'Sami', 'Amira'];
-            for (let i = 0; i < 4; i++) {
-                const inp = document.getElementById(`input-name-${i}`);
-                const btn = document.getElementById(`role-btn-${i}`);
-                if (inp && btn) {
-                    const nm = inp.value.trim() || defaults[i];
-                    btn.textContent = `${icons[i]} ${nm}`;
-                }
-            }
-        };
+        function buildSyncPayload(kind = 'STATE') {
+            return {
+                kind,
+                senderId: myClientId,
+                senderRole: myOnlineRole,
+                senderName: gameState.players[myOnlineRole]?.name || '',
+                ts: Date.now(),
+                players: gameState.players,
+                turnIdx: gameState.turnIdx,
+                ownership: gameState.ownership,
+                logs: gameState.logs.slice(0, 28),
+                hasRolledThisTurn: hasRolledThisTurn,
+                lastRoll: gameState.lastRoll || null,
+                currentTurnAnimal: gameState.currentTurnAnimal || null,
+                onePropLeftAlerted: !!gameState.onePropLeftAlerted,
+                finalRoundActive: !!gameState.finalRoundActive,
+                finalTurnsRemaining: gameState.finalTurnsRemaining || 0,
+                gameOver: !!gameState.gameOver
+            };
+        }
 
-        // Inizializzazione asincrona e sicura di Firebase Firestore per il Multiplayer Online
-        async function initOnlineCloud() {
-            if (firebaseReady && dbRef) return true;
+        async function pushGameStateToCloud(kind = 'STATE') {
+            if (playMode !== 'online' || !currentRoomCode) return;
+            const payload = buildSyncPayload(kind);
+            lastStateTimestamp = payload.ts;
+            const jsonStr = JSON.stringify(payload);
+
             try {
-                if (typeof __firebase_config === 'undefined' || !__firebase_config) return false;
-                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
-                const { getAuth, signInAnonymously, signInWithCustomToken } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                const { getFirestore, doc, getDoc, setDoc, onSnapshot } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                const db = getFirestore(app);
-
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
+                if (mqttClient && mqttClient.connected) {
+                    mqttClient.publish(getRoomTopic(currentRoomCode), jsonStr, { qos: 0, retain: true });
                 }
+            } catch (e) {
+                console.warn('Errore invio online:', e);
+            }
 
-                dbRef = { db, doc, getDoc, setDoc, onSnapshot };
-                firebaseReady = true;
-                return true;
-            } catch (err) {
-                console.warn('Cloud non disponibile, fallback locale:', err);
-                return false;
+            try {
+                if (localTabChannel) {
+                    localTabChannel.postMessage(payload);
+                }
+            } catch (e) {}
+        }
+
+        function handleIncomingRoomPacket(d) {
+            if (!d || d.senderId === myClientId || isRolling) return;
+
+            if (d.kind === 'HELLO') {
+                // Un altro telefono è entrato nella stanza: aggiorniamo il suo nome se presente
+                if (typeof d.senderRole === 'number' && d.senderName && gameState.players[d.senderRole]) {
+                    gameState.players[d.senderRole].name = d.senderName;
+                    renderPlayersHud();
+                }
+                // Rispondiamo inviando subito lo stato aggiornato della partita
+                if (gameState.players && gameState.players.length > 0) {
+                    pushGameStateToCloud('STATE');
+                }
+                return;
+            }
+
+            if (!d.players) return;
+            if (d.ts && d.ts <= lastStateTimestamp) return;
+            lastStateTimestamp = d.ts || Date.now();
+
+            const prevTurnIdx = gameState.turnIdx;
+            const wasFinalBefore = gameState.gameOver;
+
+            gameState.players = d.players;
+            gameState.turnIdx = (d.turnIdx ?? 0) % gameState.players.length;
+            gameState.ownership = d.ownership || {};
+            gameState.logs = d.logs || [];
+            hasRolledThisTurn = !!d.hasRolledThisTurn;
+            gameState.onePropLeftAlerted = !!d.onePropLeftAlerted;
+            gameState.finalRoundActive = !!d.finalRoundActive;
+            gameState.finalTurnsRemaining = d.finalTurnsRemaining || 0;
+            gameState.gameOver = !!d.gameOver;
+
+            if (d.lastRoll && d.lastRoll.id && d.lastRoll.id !== lastSyncedRollId) {
+                lastSyncedRollId = d.lastRoll.id;
+                gameState.lastRoll = d.lastRoll;
+                setDie3DFace(1, d.lastRoll.d1);
+                setDie3DFace(2, d.lastRoll.d2);
+            }
+            if (d.currentTurnAnimal) {
+                gameState.currentTurnAnimal = d.currentTurnAnimal;
+            }
+            if (prevTurnIdx !== gameState.turnIdx && gameState.currentTurnAnimal && !gameState.gameOver) {
+                playAnimalTurnSound(gameState.currentTurnAnimal.id);
+            }
+
+            renderAll();
+            if (gameState.gameOver && !wasFinalBefore) {
+                finishGameFinalRanking();
             }
         }
 
@@ -1832,7 +1759,6 @@
             ensureAudio();
             const initialPlayers = buildInitialPlayersArray();
             const startBtn = document.getElementById('start-game-btn');
-            localAlarmNotified = false;
 
             if (playMode === 'online') {
                 const rawPass = (document.getElementById('input-room-pass').value || 'REJICHE').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
@@ -1848,17 +1774,69 @@
                 if (!connected) {
                     startBtn.disabled = false;
                     setPlayMode('online');
-                    document.getElementById('online-status-hint').textContent = '⚠️ El server online mouch mawjoud houni (jarreb 1 Telifoun aw web).';
+                    document.getElementById('online-status-hint').textContent = '⚠️ Controlez votre connexion internet (o jarreb 1 Telifoun).';
                     return;
                 }
 
                 try {
-                    const ref = getRoomDocRef(currentRoomCode);
-                    const snap = await dbRef.getDoc(ref);
+                    const topic = getRoomTopic(currentRoomCode);
+                    if (localTabChannel) {
+                        try { localTabChannel.close(); } catch (e) {}
+                    }
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        localTabChannel = new BroadcastChannel(`tunisopoly_${currentRoomCode}`);
+                        localTabChannel.onmessage = (ev) => handleIncomingRoomPacket(ev.data);
+                    }
 
-                    if (snap.exists() && snap.data().players && !snap.data().gameOver) {
-                        const data = snap.data();
-                        gameState.players = data.players;
+                    // Prepariamo subito lo stato iniziale o attendiamo eventuale stanza esistente (max 1.1s)
+                    isRolling = false;
+                    hasRolledThisTurn = false;
+                    lastSyncedRollId = 0;
+                    lastStateTimestamp = 0;
+                    const namesStr = initialPlayers.map(p => p.name).join(', ');
+                    gameState = {
+                        players: initialPlayers,
+                        turnIdx: 0,
+                        ownership: {},
+                        logs: [
+                            { text: `🌍 Ghorfa Online [${currentRoomCode}] t'hallat (${namesStr})!`, cls: 'font-extrabold text-[#1e3a8a]' }
+                        ],
+                        lastRoll: null,
+                        currentTurnAnimal: TURN_ANIMALS[0],
+                        onePropLeftAlerted: false,
+                        finalRoundActive: false,
+                        finalTurnsRemaining: 0,
+                        gameOver: false
+                    };
+
+                    let receivedExistingState = false;
+                    mqttClient.removeAllListeners('message');
+                    mqttClient.on('message', (t, msgBuf) => {
+                        if (t !== topic) return;
+                        try {
+                            const parsed = JSON.parse(msgBuf.toString());
+                            if (parsed && parsed.players && !parsed.gameOver && parsed.senderId !== myClientId) {
+                                receivedExistingState = true;
+                            }
+                            handleIncomingRoomPacket(parsed);
+                        } catch (e) {}
+                    });
+
+                    await new Promise((res) => {
+                        mqttClient.subscribe(topic, { qos: 0 }, () => res());
+                    });
+
+                    // Annunciamo il nostro ingresso nella stanza
+                    pushGameStateToCloud('HELLO');
+                    await new Promise((r) => setTimeout(r, 950));
+
+                    if (!receivedExistingState) {
+                        // Siamo il primo giocatore a creare la stanza con questa password
+                        const firstP = gameState.players[0];
+                        triggerRandomTurnAnimal(firstP ? firstP.name : '');
+                        await pushGameStateToCloud('STATE');
+                    } else {
+                        // Ci siamo uniti a una partita già aperta: assicuriamoci che il nostro slot e nome siano presenti
                         while (gameState.players.length <= myOnlineRole) {
                             const nextId = gameState.players.length;
                             const defaults = ['Mehdi', 'Yasmine', 'Sami', 'Amira'];
@@ -1867,23 +1845,26 @@
                         }
                         const myName = (document.getElementById(`input-name-${myOnlineRole}`)?.value || '').trim();
                         if (myName) gameState.players[myOnlineRole].name = myName;
-
-                        gameState.turnIdx = (data.turnIdx ?? 0) % gameState.players.length;
-                        gameState.ownership = data.ownership || {};
-                        gameState.logs = data.logs || [];
-                        hasRolledThisTurn = !!data.hasRolledThisTurn;
-                        gameState.lastRoll = data.lastRoll || null;
-                        gameState.currentTurnAnimal = data.currentTurnAnimal || TURN_ANIMALS[0];
-                        gameState.onePropLeftAlerted = !!data.onePropLeftAlerted;
-                        gameState.finalRoundActive = !!data.finalRoundActive;
-                        gameState.finalTurnsRemaining = data.finalTurnsRemaining || 0;
-                        gameState.gameOver = !!data.gameOver;
-                        if (gameState.lastRoll) lastSyncedRollId = gameState.lastRoll.id || 0;
-
                         addLog(`🌍 ${gameState.players[myOnlineRole].name} d'khal online lel ghorfa [${currentRoomCode}]!`, 'font-extrabold text-[#0284c7]');
-                        await pushGameStateToCloud();
-                    } else {
-                        isRolling = false;
+                        await pushGameStateToCloud('STATE');
+                    }
+
+                    document.getElementById('header-room-badge').textContent = `🔑 ${currentRoomCode}`;
+                    document.getElementById('header-sub-status').textContent = `Online • Enta: ${gameState.players[myOnlineRole].name}`;
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    startBtn.disabled = false;
+                    setPlayMode('online');
+                }
+            } else {
+                if (mqttClient && currentRoomCode) {
+                    try { mqttClient.unsubscribe(getRoomTopic(currentRoomCode)); } catch (e) {}
+                }
+                if (localTabChannel) {
+                    try { localTabChannel.close(); localTabChannel = null; } catch (e) {}
+                }
+                isRolling = false;
                         hasRolledThisTurn = false;
                         lastSyncedRollId = 0;
                         const namesStr = initialPlayers.map(p => p.name).join(', ');
@@ -1979,624 +1960,23 @@
             if (musicEnabled) startOrientalLounge();
 
             init3DDiceCubes();
-            const firstPlayer = gameState.players[gameState.turnIdx];
-            triggerRandomTurnAnimal(firstPlayer ? firstPlayer.name : '');
+            if (playMode !== 'online') {
+                const firstPlayer = gameState.players[gameState.turnIdx];
+                triggerRandomTurnAnimal(firstPlayer ? firstPlayer.name : '');
+            }
             renderAll();
-            pushGameStateToCloud();
         };
 
         /* ======================================================================
            5. DADI 3D CUBICI, RENDERING TABELLONE, HUD & LOGICA PROPRIETÀ
-           ====================================================================== */
-        const PIP_MAPS = {
-            1: [4],
-            2: [2, 6],
-            3: [2, 4, 6],
-            4: [0, 2, 6, 8],
-            5: [0, 2, 4, 6, 8],
-            6: [0, 2, 3, 5, 6, 8]
-        };
-
-        const CUBE_ROTATIONS = {
-            1: 'rotateX(0deg) rotateY(0deg)',
-            2: 'rotateX(0deg) rotateY(180deg)',
-            3: 'rotateX(0deg) rotateY(-90deg)',
-            4: 'rotateX(0deg) rotateY(90deg)',
-            5: 'rotateX(-90deg) rotateY(0deg)',
-            6: 'rotateX(90deg) rotateY(0deg)'
-        };
-
-        function buildDieFacesHtml() {
-            return [1, 2, 3, 4, 5, 6].map(faceNum => {
-                const pips = Array.from({ length: 9 }, (_, idx) => {
-                    const active = PIP_MAPS[faceNum].includes(idx);
-                    const redCls = (faceNum === 1 || faceNum === 4) ? ' red-pip' : '';
-                    return active ? `<span class="pip${redCls}"></span>` : '<span></span>';
-                }).join('');
-                return `<div class="dice-face face-${faceNum}">${pips}</div>`;
-            }).join('');
-        }
-
-        function init3DDiceCubes() {
-            const c1 = document.getElementById('die-cube-1');
-            const c2 = document.getElementById('die-cube-2');
-            if (c1) {
-                c1.innerHTML = buildDieFacesHtml();
-                c1.style.transform = CUBE_ROTATIONS[1];
-            }
-            if (c2) {
-                c2.innerHTML = buildDieFacesHtml();
-                c2.style.transform = CUBE_ROTATIONS[6];
-            }
-        }
-
-        function setDie3DFace(dieNumber, value) {
-            const cube = document.getElementById(`die-cube-${dieNumber}`);
-            if (!cube) return;
-            cube.classList.remove('rolling-3d');
-            cube.style.transform = CUBE_ROTATIONS[value] || CUBE_ROTATIONS[1];
-        }
-
-        function renderAll() {
-            renderPlayersHud();
-            renderMonopolyBoard();
-            renderCenterPanel();
-            renderAlarmBanner();
-            renderLogs();
-        }
-
-        function renderAlarmBanner() {
-            const banner = document.getElementById('alarm-banner');
-            const titleEl = document.getElementById('alarm-banner-title');
-            const subEl = document.getElementById('alarm-banner-sub');
-            const badgeEl = document.getElementById('alarm-badge-pill');
-            if (!banner) return;
-
-            const totalProps = TUNISIA_BOARD.filter(c => c.type === 'property').length;
-            const boughtProps = Object.keys(gameState.ownership).length;
-            const freeProps = totalProps - boughtProps;
-
-            if (gameState.finalRoundActive) {
-                banner.classList.remove('hidden');
-                titleEl.textContent = '🚨 آخر دورة! • Akher Doura (Ultimo Giro)!';
-                subEl.textContent = `T'chret el dar el akhra! Baqi ${gameState.finalTurnsRemaining} tour(s) w toufa el lo3ba!`;
-                badgeEl.textContent = `BAQI ${gameState.finalTurnsRemaining} 🔄`;
-            } else if (freeProps === 1) {
-                banner.classList.remove('hidden');
-                titleEl.textContent = '🔔 ناقوس الخطر! آخر دورة • Naqous el Khatar! Akher Doura!';
-                subEl.textContent = 'Bqat dar wahda barka! El lo3ba toufa ba3d tour wahda men chira el akhra!';
-                badgeEl.textContent = '1 DAR 🏠';
-            } else {
-                banner.classList.add('hidden');
-            }
-        }
-
-        function renderPlayersHud() {
-            const hud = document.getElementById('players-hud');
-            if (!hud) return;
-
-            const borderColors = ['#0284c7', '#e11d48', '#059669', '#9333ea'];
-            const textColors = ['#1e3a8a', '#be123c', '#065f46', '#581c87'];
-
-            hud.innerHTML = gameState.players.map((p, idx) => {
-                const isTurn = idx === gameState.turnIdx && !gameState.gameOver;
-                const propCount = Object.values(gameState.ownership).filter(o => o.ownerId === p.id).length;
-                const av = PIXAR_AVATARS[p.id] || PIXAR_AVATARS[0];
-                const ring = isTurn ? 'ring-4 ring-[#fbbf24] scale-[1.02]' : 'opacity-90';
-
-                return `
-                <div class="pixar-card rounded-2xl p-2 flex items-center gap-2 transition-all ${ring}">
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 shrink-0 bg-white shadow" style="border-color:${borderColors[p.id]}">
-                        ${av.svg}
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-1">
-                            <span class="font-extrabold text-xs sm:text-sm truncate" style="color:${textColors[p.id]}">${p.name}</span>
-                            ${isTurn ? '<span class="text-[9px] font-black bg-[#fef08a] text-[#92400e] px-1.5 py-0.5 rounded-full border border-[#f59e0b]">TOUR</span>' : ''}
-                        </div>
-                        <div class="text-xs sm:text-sm font-black text-[#1e293b]">${p.dates} 🌴</div>
-                        <div class="text-[10px] font-bold text-[#64748b]">🏠 ${propCount} blayes</div>
-                    </div>
-                </div>`;
-            }).join('');
-        }
-
-        function renderMonopolyBoard() {
-            const board = document.getElementById('monopoly-board');
-            if (!board) return;
-
-            board.querySelectorAll('.board-cell').forEach(el => el.remove());
-
-            const ownerBadgeColors = ['#0284c7', '#e11d48', '#059669', '#9333ea'];
-
-            TUNISIA_BOARD.forEach(cell => {
-                const isCorner = (cell.r === 1 || cell.r === 7) && (cell.c === 1 || cell.c === 7);
-                const own = gameState.ownership[cell.idx];
-                const playersHere = gameState.players.filter(p => p.pos === cell.idx);
-
-                const div = document.createElement('div');
-                div.className = `board-cell ${isCorner ? 'corner-cell' : ''} p-0.5 sm:p-1 text-center`;
-                div.style.gridRow = cell.r;
-                div.style.gridColumn = cell.c;
-                div.onclick = () => inspectCell(cell.idx);
-
-                let headerBar = '';
-                if (cell.type === 'property') {
-                    const bld = own ? (own.level === 2 ? '🕌' : (own.level === 1 ? '☕' : '')) : '';
-                    headerBar = `<div class="w-full h-2 sm:h-2.5 rounded-t-md flex items-center justify-center text-[8px] text-white font-black" style="background:${cell.color}">${bld}</div>`;
-                } else {
-                    headerBar = `<div class="w-full h-1.5 rounded-t-md" style="background:${cell.color}"></div>`;
-                }
-
-                const ownerDot = own
-                    ? `<span class="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full border border-white shadow" style="background:${ownerBadgeColors[own.ownerId]}"></span>`
-                    : '';
-
-                const tokensHtml = playersHere.length > 0
-                    ? `<div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20 ${playersHere.length > 1 ? '-space-x-2' : ''}">
-                        ${playersHere.map(pl => {
-                            const isAct = pl.id === gameState.players[gameState.turnIdx]?.id;
-                            return `<div class="w-9 h-9 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-white shadow-xl bg-white ${isAct ? 'token-active' : ''}" style="border-color:${ownerBadgeColors[pl.id]}">${PIXAR_AVATARS[pl.id].svg}</div>`;
-                        }).join('')}
-                       </div>`
-                    : '';
-
-                const priceFooter = cell.type === 'property'
-                    ? `<div class="text-[7px] sm:text-[8px] font-black text-[#92400e] leading-none">${cell.price}🌴</div>`
-                    : `<div class="tile-ar-sub text-[7px] sm:text-[8px] truncate">${cell.arName}</div>`;
-
-                div.innerHTML = `
-                    ${headerBar}
-                    ${ownerDot}
-                    <div class="flex-1 flex flex-col items-center justify-center leading-tight px-0.5 min-h-0">
-                        <span class="text-xs sm:text-base leading-none">${cell.icon}</span>
-                        <span class="tile-title-oriental text-[7px] sm:text-[9px] text-[#1e3a8a] truncate w-full">${cell.name}</span>
-                    </div>
-                    ${priceFooter}
-                    ${tokensHtml}
-                `;
-
-                board.appendChild(div);
-            });
-        }
-
-        function renderCenterPanel() {
-            const active = gameState.players[gameState.turnIdx];
-            const av = PIXAR_AVATARS[active.id];
-            const pill = document.getElementById('center-turn-pill');
-            const actions = document.getElementById('center-actions');
-            const isMyTurn = playMode === 'local' || gameState.turnIdx === myOnlineRole;
-            const animal = gameState.currentTurnAnimal || TURN_ANIMALS[0];
-
-            pill.innerHTML = `
-                <span class="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border-2 border-[#f59e0b] shadow bg-white inline-block shrink-0">${av.svg}</span>
-                <div class="text-left leading-tight">
-                    <div class="text-[9px] font-black uppercase text-[#0284c7]">${isMyTurn ? 'Tourk Enta!' : 'Nestannew...'}</div>
-                    <div class="font-extrabold text-xs sm:text-sm text-[#1e3a8a] flex items-center gap-1">
-                        <span>${active.name}</span>
-                        <span class="text-sm sm:text-base" title="${animal.label}">${animal.icon}</span>
-                    </div>
-                </div>
-            `;
-
-            if (gameState.gameOver) {
-                actions.innerHTML = `
-                    <button onclick="finishGameFinalRanking()" class="w-full py-2 rounded-xl btn-gold font-extrabold text-xs">
-                        Chouf el Natija 🏆
-                    </button>
-                `;
-                return;
-            }
-
-            if (!isMyTurn) {
-                actions.innerHTML = `
-                    <div class="py-1.5 px-2 rounded-xl bg-white/80 border border-[#93c5fd] text-[10px] font-extrabold text-[#1e3a8a]">
-                        ⏳ Nestannew fi ${active.name} yal3ab...
-                    </div>
-                `;
-                return;
-            }
-
-            if (!hasRolledThisTurn) {
-                actions.innerHTML = `
-                    <button onclick="rollDiceAndMove()" ${isRolling ? 'disabled' : ''} class="w-full py-2 sm:py-2.5 rounded-xl btn-gold font-extrabold text-xs sm:text-sm shadow">
-                        🎲 Arbi el Zhar! (Lancia)
-                    </button>
-                `;
-            } else {
-                actions.innerHTML = `
-                    <button onclick="endPlayerTurn()" class="w-full py-2 sm:py-2.5 rounded-xl btn-emerald font-extrabold text-xs sm:text-sm shadow">
-                        Passi el Tour ➡️
-                    </button>
-                `;
-            }
-        }
-
-        window.rollDiceAndMove = function() {
-            if (isRolling || hasRolledThisTurn || gameState.gameOver) return;
-            if (playMode === 'online' && gameState.turnIdx !== myOnlineRole) return;
-
-            isRolling = true;
-            playSfx('dice');
-            renderCenterPanel();
-
-            const c1 = document.getElementById('die-cube-1');
-            const c2 = document.getElementById('die-cube-2');
-            if (c1) c1.classList.add('rolling-3d');
-            if (c2) c2.classList.add('rolling-3d');
-
-            const d1 = Math.floor(Math.random() * 6) + 1;
-            const d2 = Math.floor(Math.random() * 6) + 1;
-            const totalSteps = d1 + d2;
-
-            setTimeout(() => {
-                setDie3DFace(1, d1);
-                setDie3DFace(2, d2);
-                gameState.lastRoll = { id: Date.now(), d1, d2 };
-                lastSyncedRollId = gameState.lastRoll.id;
-
-                const player = gameState.players[gameState.turnIdx];
-                addLog(`🎲 ${player.name} rma ${d1} + ${d2} = ${totalSteps} khotwet!`, 'font-bold text-[#1e3a8a]');
-
-                let stepsLeft = totalSteps;
-                const stepInterval = setInterval(() => {
-                    player.pos = (player.pos + 1) % TUNISIA_BOARD.length;
-                    playSfx('step');
-
-                    if (player.pos === 0) {
-                        player.dates += 200;
-                        playSfx('buy');
-                        addLog(`🇹🇳 ${player.name} t3adda men Tunisi w rbah +200 🌴!`, 'font-extrabold text-[#16a34a]');
-                    }
-
-                    renderMonopolyBoard();
-                    renderPlayersHud();
-
-                    stepsLeft -= 1;
-                    if (stepsLeft <= 0) {
-                        clearInterval(stepInterval);
-                        isRolling = false;
-                        hasRolledThisTurn = true;
-                        handleLandingOnCell(player, TUNISIA_BOARD[player.pos]);
-                        renderAll();
-                        pushGameStateToCloud();
-                    }
-                }, 210);
-            }, 720);
-        };
-
-        function handleLandingOnCell(player, cell) {
-            if (cell.type === 'start') {
-                addLog(`🇹🇳 ${player.name} fi Intilaqa Tunisi!`, 'font-bold text-[#1e3a8a]');
-            } else if (cell.type === 'oasis') {
-                player.dates += cell.bonus;
-                playSfx('buy');
-                addLog(`🌴 ${player.name} rtaah fi El Waha w rbah +${cell.bonus} 🌴!`, 'font-extrabold text-[#16a34a]');
-            } else if (cell.type === 'tax') {
-                player.dates -= cell.amount;
-                playSfx('pay');
-                addLog(`🍵 ${player.name} khallas ${cell.amount} 🌴 fi ${cell.name}.`, 'font-bold text-[#d97706]');
-                checkBankruptcy();
-            } else if (cell.type === 'traffic') {
-                player.pos = 6;
-                playSfx('pay');
-                addLog(`🚐 Louage m3abbi! ${player.name} rja3 l'Souk el Medina!`, 'font-bold text-[#e11d48]');
-            } else if (cell.type === 'chance' || cell.type === 'chest') {
-                const deck = cell.type === 'chance' ? ZHAR_CARDS : MAKTOUB_CARDS;
-                const card = deck[Math.floor(Math.random() * deck.length)];
-                if (card.delta) {
-                    player.dates += card.delta;
-                    playSfx(card.delta > 0 ? 'buy' : 'pay');
-                }
-                if (typeof card.moveTo === 'number') {
-                    if (card.moveTo === 0 && player.pos > 0) player.dates += 200;
-                    player.pos = card.moveTo;
-                    playSfx('buy');
-                }
-                addLog(`${card.title}: ${card.text}`, 'font-extrabold text-[#7c3aed]');
-                openModal(`
-                    <div class="text-4xl mb-2">${cell.icon}</div>
-                    <h3 class="font-story text-xl font-extrabold text-[#1e3a8a] mb-1">${card.title}</h3>
-                    <p class="text-xs sm:text-sm text-[#0369a1] font-bold mb-4">${card.text}</p>
-                    <button onclick="closeModal()" class="w-full py-2.5 rounded-xl btn-gold font-extrabold text-xs">
-                        Mabrouk! ✨
-                    </button>
-                `);
-                checkBankruptcy();
-            } else if (cell.type === 'property') {
-                const own = gameState.ownership[cell.idx];
-                if (!own) {
-                    const canBuy = player.dates >= cell.price;
-                    openModal(`
-                        <div class="w-full h-3 rounded-full mb-2" style="background:${cell.color}"></div>
-                        <div class="text-4xl mb-1">${cell.icon}</div>
-                        <div class="font-arabic-ornate text-lg font-bold text-[#d97706]">۞ ${cell.arName} ۞</div>
-                        <h3 class="font-story text-xl font-extrabold text-[#1e3a8a] mb-1">${cell.name}</h3>
-                        <p class="text-xs text-[#0369a1] font-bold mb-2">${cell.desc}</p>
-                        <div class="bg-[#fef9c3] border border-[#fbbf24] rounded-xl p-2 text-xs font-extrabold text-[#92400e] mb-3">
-                            Soum: ${cell.price} 🌴 • Kra: ${cell.rent} 🌴 • Ras Melek: ${player.dates} 🌴
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="buyProperty(${cell.idx})" ${canBuy ? '' : 'disabled'} class="flex-1 py-2.5 rounded-xl btn-emerald font-extrabold text-xs">
-                                Echri (${cell.price} 🌴) 🏠
-                            </button>
-                            <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-[#e2e8f0] font-extrabold text-xs text-[#475569]">
-                                Fout
-                            </button>
-                        </div>
-                    `);
-                } else if (own.ownerId === player.id) {
-                    if (own.level < 2) {
-                        const nextName = own.level === 0 ? 'Café Moresque ☕' : 'Riad di Lusso 🕌';
-                        const canBuild = player.dates >= cell.buildCost;
-                        openModal(`
-                            <div class="text-4xl mb-1">${own.level === 0 ? '☕' : '🕌'}</div>
-                            <h3 class="font-story text-xl font-extrabold text-[#1e3a8a] mb-1">Blasetek: ${cell.name}</h3>
-                            <p class="text-xs text-[#0369a1] font-bold mb-3">Theb tebni <strong>${nextName}</strong> b'${cell.buildCost} 🌴 bech tzid el kra?</p>
-                            <div class="flex gap-2">
-                                <button onclick="upgradeProperty(${cell.idx})" ${canBuild ? '' : 'disabled'} class="flex-1 py-2.5 rounded-xl btn-gold font-extrabold text-xs">
-                                    Ebni (${cell.buildCost} 🌴)
-                                </button>
-                                <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-[#e2e8f0] font-extrabold text-xs text-[#475569]">
-                                    La, Choukran
-                                </button>
-                            </div>
-                        `);
-                    } else {
-                        addLog(`🕌 ${player.name} rtaah fi Riad mte3ou fi ${cell.name}!`, 'font-bold text-[#16a34a]');
-                    }
-                } else {
-                    const owner = gameState.players[own.ownerId];
-                    const mult = own.level === 2 ? 2.5 : (own.level === 1 ? 1.6 : 1);
-                    const totalRent = Math.round(cell.rent * mult);
-                    player.dates -= totalRent;
-                    owner.dates += totalRent;
-                    playSfx('pay');
-                    addLog(`💸 ${player.name} khallas ${totalRent} 🌴 kra l'${owner.name} fi ${cell.name}!`, 'font-extrabold text-[#e11d48]');
-                    checkBankruptcy();
-                }
-            }
-        }
-
-        window.buyProperty = function(cellIdx) {
-            const player = gameState.players[gameState.turnIdx];
-            const cell = TUNISIA_BOARD[cellIdx];
-            if (!cell || gameState.ownership[cellIdx] || player.dates < cell.price) return;
-
-            player.dates -= cell.price;
-            gameState.ownership[cellIdx] = { ownerId: player.id, level: 0 };
-            playSfx('buy');
-            addLog(`🏠 ${player.name} chra ${cell.name} (${cell.arName}) b'${cell.price} 🌴!`, 'font-extrabold text-[#16a34a]');
-            closeModal();
-
-            const totalProps = TUNISIA_BOARD.filter(c => c.type === 'property').length;
-            const boughtProps = Object.keys(gameState.ownership).length;
-            const freeProps = totalProps - boughtProps;
-
-            if (freeProps === 1 && !gameState.onePropLeftAlerted) {
-                gameState.onePropLeftAlerted = true;
-                playSfx('alarm');
-                addLog('🔔 ناقوس الخطر! آخر دورة • Bqat dar wahda barka!', 'font-extrabold text-[#e11d48]');
-            } else if (freeProps === 0 && !gameState.finalRoundActive) {
-                gameState.finalRoundActive = true;
-                gameState.finalTurnsRemaining = gameState.players.length;
-                playSfx('alarm');
-                addLog('🚨 T\'chret el dar el akhra! Bda el tour el akher (Akher Doura)!', 'font-extrabold text-[#e11d48]');
-            }
-
-            renderAll();
-            pushGameStateToCloud();
-        };
-
-        window.upgradeProperty = function(cellIdx) {
-            const player = gameState.players[gameState.turnIdx];
-            const cell = TUNISIA_BOARD[cellIdx];
-            const own = gameState.ownership[cellIdx];
-            if (!cell || !own || own.ownerId !== player.id || own.level >= 2 || player.dates < cell.buildCost) return;
-
-            player.dates -= cell.buildCost;
-            own.level += 1;
-            const label = own.level === 1 ? 'Café Moresque ☕' : 'Riad di Lusso 🕌';
-            playSfx('buy');
-            addLog(`✨ ${player.name} bna ${label} fi ${cell.name}!`, 'font-extrabold text-[#d97706]');
-            closeModal();
-            renderAll();
-            pushGameStateToCloud();
-        };
-
-        window.inspectCell = function(cellIdx) {
-            const cell = TUNISIA_BOARD[cellIdx];
-            const own = gameState.ownership[cellIdx];
-            let ownerLine = '<span class="text-[#16a34a]">Mouch mechrya (Libera)</span>';
-            if (own) {
-                const ownerName = gameState.players[own.ownerId].name;
-                const lvl = own.level === 2 ? ' + قصر Riad 🕌' : (own.level === 1 ? ' + قهوة Café ☕' : '');
-                ownerLine = `<span class="text-[#1e3a8a]">Mlek: ${ownerName}${lvl}</span>`;
-            }
-
-            openModal(`
-                <div class="w-full h-3 rounded-full mb-2" style="background:${cell.color}"></div>
-                <div class="text-4xl mb-1">${cell.icon}</div>
-                <div class="font-arabic-ornate text-lg font-bold text-[#d97706]">۞ ${cell.arName} ۞</div>
-                <h3 class="font-story text-xl font-extrabold text-[#1e3a8a] mb-1">${cell.name}</h3>
-                <p class="text-xs text-[#0369a1] font-bold mb-2">${cell.desc}</p>
-                ${cell.type === 'property' ? `
-                    <div class="bg-[#fef9c3] border border-[#fbbf24] rounded-xl p-2 text-xs font-extrabold text-[#92400e] mb-3">
-                        Soum: ${cell.price} 🌴 • Kra: ${cell.rent} 🌴 • ${ownerLine}
-                    </div>
-                ` : ''}
-                <button onclick="closeModal()" class="w-full py-2.5 rounded-xl btn-royal font-extrabold text-xs">
-                    Sakker
-                </button>
-            `);
-        };
-
-        window.endPlayerTurn = function() {
-            if (isRolling || gameState.gameOver) return;
-            if (playMode === 'online' && gameState.turnIdx !== myOnlineRole) return;
-
-            hasRolledThisTurn = false;
-
-            if (gameState.finalRoundActive) {
-                gameState.finalTurnsRemaining -= 1;
-                if (gameState.finalTurnsRemaining <= 0) {
-                    gameState.gameOver = true;
-                    renderAll();
-                    pushGameStateToCloud();
-                    finishGameFinalRanking();
-                    return;
-                }
-            }
-
-            gameState.turnIdx = (gameState.turnIdx + 1) % gameState.players.length;
-            const nextPlayer = gameState.players[gameState.turnIdx];
-            triggerRandomTurnAnimal(nextPlayer ? nextPlayer.name : '');
-            renderAll();
-            pushGameStateToCloud();
-        };
-
-        function calculatePlayerTotalWealth(player) {
-            let propWealth = 0;
-            Object.entries(gameState.ownership).forEach(([cellIdxStr, own]) => {
-                if (own.ownerId === player.id) {
-                    const cell = TUNISIA_BOARD[Number(cellIdxStr)];
-                    if (cell) {
-                        propWealth += cell.price + (own.level * cell.buildCost);
-                    }
-                }
-            });
-            return {
-                dates: player.dates,
-                propWealth,
-                total: player.dates + propWealth
-            };
-        }
-
-        function finishGameFinalRanking() {
-            const ranked = gameState.players
-                .map(p => ({ player: p, ...calculatePlayerTotalWealth(p) }))
-                .sort((a, b) => b.total - a.total);
-
-            const champion = ranked[0];
-            playSfx('win');
-
-            const icons = ['🌴', '👑', '💖', '🇹🇳', '✨', '🕌'];
-            for (let i = 0; i < 36; i++) {
-                const el = document.createElement('div');
-                el.className = 'confetti-drop text-2xl';
-                el.style.left = `${Math.random() * 94}vw`;
-                el.style.animationDelay = `${Math.random() * 1.4}s`;
-                el.textContent = icons[i % icons.length];
-                document.body.appendChild(el);
-                setTimeout(() => el.remove(), 5500);
-            }
-
-            const medals = ['🥇', '🥈', '🥉', '🏅'];
-            const rankingHtml = ranked.map((r, i) => `
-                <div class="flex items-center justify-between bg-white/95 border-2 ${i === 0 ? 'border-[#fbbf24] bg-[#fef9c3]' : 'border-[#cbd5e1]'} rounded-2xl px-3 py-2 text-left">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <span class="text-lg">${medals[i] || '🏅'}</span>
-                        <div class="w-8 h-8 rounded-full overflow-hidden border border-[#94a3b8] shrink-0 bg-white">${PIXAR_AVATARS[r.player.id].svg}</div>
-                        <div class="truncate">
-                            <div class="font-extrabold text-xs text-[#1e3a8a] truncate">${r.player.name}</div>
-                            <div class="text-[10px] font-bold text-[#64748b]">${r.dates} 🌴 + ${r.propWealth} 🏠</div>
-                        </div>
-                    </div>
-                    <div class="font-black text-sm text-[#b45309] shrink-0">${r.total} 🌴</div>
-                </div>
-            `).join('');
-
-            openModal(`
-                <div class="w-20 h-20 mx-auto rounded-full overflow-hidden border-4 border-[#fbbf24] shadow-xl bg-white mb-1.5 float-soft">
-                    ${PIXAR_AVATARS[champion.player.id].svg}
-                </div>
-                <div class="inline-block bg-[#1e3a8a] text-[#fde047] text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full mb-1">
-                    وفات اللعبة • Sultan Tounes 👑🇹🇳
-                </div>
-                <h2 class="font-story text-xl sm:text-2xl font-extrabold text-[#1e3a8a] mb-1">
-                    Mabrouk ${champion.player.name}! Youyouyou! ✨
-                </h2>
-                <p class="text-[11px] sm:text-xs text-[#0369a1] font-bold mb-2.5">
-                    Wfa el tour el akher ba3d chira el dar el akhra! Hedhi el natija el nihaiya:
-                </p>
-                <div class="space-y-1.5 mb-3.5">
-                    ${rankingHtml}
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="closeModal(); startTunisopoly();" class="flex-1 py-3 rounded-2xl btn-gold font-extrabold text-xs sm:text-sm">
-                        3awed Safra 🔄
-                    </button>
-                    <button onclick="backToLobbyNow()" class="flex-1 py-3 rounded-2xl btn-royal font-extrabold text-xs sm:text-sm">
-                        Safha el Oula 🏠
-                    </button>
-                </div>
-            `);
-        }
-
-        window.checkBankruptcy = function() {
-            const loser = gameState.players.find(p => p.dates < 0);
-            if (!loser) return;
-            const ranked = [...gameState.players].sort((a, b) => b.dates - a.dates);
-            const winner = ranked[0];
-            gameState.gameOver = true;
-            celebrateWinner(winner, loser);
-        };
-
-        function celebrateWinner(winner, loser) {
-            playSfx('win');
-            const av = PIXAR_AVATARS[winner.id];
-            const icons = ['🌴', '👑', '💖', '🇹🇳', '✨', '🕌'];
-            for (let i = 0; i < 32; i++) {
-                const el = document.createElement('div');
-                el.className = 'confetti-drop text-2xl';
-                el.style.left = `${Math.random() * 94}vw`;
-                el.style.animationDelay = `${Math.random() * 1.4}s`;
-                el.textContent = icons[i % icons.length];
-                document.body.appendChild(el);
-                setTimeout(() => el.remove(), 5500);
-            }
-
-            openModal(`
-                <div class="w-24 h-24 mx-auto rounded-full overflow-hidden border-4 border-[#fbbf24] shadow-xl bg-white mb-2 float-soft">
-                    ${av.svg}
-                </div>
-                <div class="inline-block bg-[#1e3a8a] text-[#fde047] text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full mb-1.5">
-                    مبروك • Sultan Tounes 👑🇹🇳
-                </div>
-                <h2 class="font-story text-2xl font-extrabold text-[#1e3a8a] mb-1">
-                    Mabrouk ${winner.name}! Youyouyou! ✨
-                </h2>
-                <p class="text-xs sm:text-sm text-[#0369a1] font-bold mb-3">
-                    Rbaht el safra b'<strong>${winner.dates} 🌴</strong>! (${loser.name} wsol l'${loser.dates} 🌴).
-                </p>
-                <div class="flex gap-2">
-                    <button onclick="closeModal(); startTunisopoly();" class="flex-1 py-3 rounded-2xl btn-gold font-extrabold text-xs sm:text-sm">
-                        3awed Safra 🔄
-                    </button>
-                    <button onclick="backToLobbyNow()" class="flex-1 py-3 rounded-2xl btn-royal font-extrabold text-xs sm:text-sm">
-                        Safha el Oula 🏠
-                    </button>
-                </div>
-            `);
-        }
-
-        window.confirmBackToLobby = function() {
-            openModal(`
-                <div class="text-4xl mb-2">🕌</div>
-                <h3 class="font-story text-xl font-extrabold text-[#1e3a8a] mb-1">Tarja3 lel Safha el Oula?</h3>
-                <p class="text-xs text-[#0369a1] font-bold mb-4">Tnajjem tbaddel el esemi walla el budget.</p>
-                <div class="flex gap-2">
-                    <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-[#dbeafe] font-extrabold text-xs text-[#1e3a8a]">Kammel Al3ab</button>
-                    <button onclick="backToLobbyNow()" class="flex-1 py-2.5 rounded-xl btn-rose font-extrabold text-xs">Arja3</button>
-                </div>
-            `);
-        };
-
+// ... existing code ... -->
         window.backToLobbyNow = function() {
             closeModal();
-            if (roomUnsubscribe) {
-                roomUnsubscribe();
-                roomUnsubscribe = null;
+            if (mqttClient && currentRoomCode) {
+                try { mqttClient.unsubscribe(getRoomTopic(currentRoomCode)); } catch (e) {}
+            }
+            if (localTabChannel) {
+                try { localTabChannel.close(); localTabChannel = null; } catch (e) {}
             }
             stopOrientalLounge();
             document.getElementById('welcome-screen').classList.remove('hidden');
